@@ -82,8 +82,8 @@
         body.dark-mode .completed { filter: brightness(70%); }
         .schedule-item.completed { background-color: var(--completed-bg-light); }
         body.dark-mode .schedule-item.completed { background-color: var(--completed-bg-dark); }
-        .schedule-item.completed > *:not(.drag-handle) { opacity: 0.7; }
-        .schedule-item.completed .subject-details { text-decoration: line-through; }
+        .schedule-item.completed > *:not(.task-prefix) { opacity: 0.7; }
+        .schedule-item.completed .subject-name { text-decoration: line-through; }
         
         .break-item { background-color: var(--break-bg-light); }
         body.dark-mode .break-item { background-color: var(--break-bg-dark); }
@@ -100,6 +100,8 @@
         .checkbox-container .fa-check { color: white; font-size: 0.8rem; opacity: 0; transition: opacity 0.2s ease; }
         .completed .checkbox-container .fa-check { opacity: 1; }
         
+        /* Desktop Layout */
+        .task-prefix { display: flex; align-items: center; }
         .subject-details { flex-grow: 1; }
         .time-header { display: flex; align-items: center; gap: 0.5rem; }
         .time-display { font-size: 1.5rem; font-weight: 600; }
@@ -135,7 +137,6 @@
             .time-display { font-size: 1.3rem; }
             .subject-name { font-size: 1rem; }
 
-            /* New Mobile Grid Layout */
             .schedule-item {
                 display: grid;
                 grid-template-columns: auto 1fr auto;
@@ -147,13 +148,10 @@
                 column-gap: 0.75rem;
                 row-gap: 0.25rem;
             }
-            .task-prefix {
-                grid-area: prefix;
-                display: flex;
-                align-items: center;
-            }
+            .task-prefix { grid-area: prefix; }
+            .schedule-item .subject-details { grid-area: subject; }
             .schedule-item .time-header { grid-area: time; }
-            .schedule-item .subject-name { grid-area: subject; margin-top: 0; }
+            .schedule-item .subject-name { margin-top: 0; }
             .schedule-item .duration-control {
                 grid-area: duration;
                 margin-left: 0;
@@ -317,11 +315,13 @@ document.addEventListener('DOMContentLoaded', () => {
                         <i class="fas fa-check"></i>
                     </div>
                 </div>
-                <div class="time-header">
-                    <span class="time-display">${formatTime(item.startTime)}</span>
-                    <button class="edit-btn" data-action="edit-time" title="Edit time"><i class="fas fa-pencil-alt"></i></button>
+                <div class="subject-details">
+                    <div class="time-header">
+                        <span class="time-display">${formatTime(item.startTime)}</span>
+                        <button class="edit-btn" data-action="edit-time" title="Edit time"><i class="fas fa-pencil-alt"></i></button>
+                    </div>
+                    <span class="subject-name">${item.name}</span>
                 </div>
-                <span class="subject-name">${item.name}</span>
                 <div class="duration-control">
                     <input type="number" value="${item.durationHours}" min="0.25" step="0.25" class="duration-input">
                     <label>hrs</label>
