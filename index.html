@@ -78,8 +78,15 @@
         .schedule-item, .break-item { display: flex; align-items: center; background-color: var(--secondary-bg-light); padding: 1.2rem; border-radius: 12px; margin-bottom: 1rem; box-shadow: var(--shadow); transition: all 0.3s ease; }
         body.dark-mode .schedule-item, body.dark-mode .break-item { background-color: var(--secondary-bg-dark); }
         
-        .completed { background-color: var(--completed-bg-light); }
-        body.dark-mode .completed { background-color: var(--completed-bg-dark); }
+        /* Apply less brightness to completed items */
+        .completed { 
+            background-color: var(--completed-bg-light); 
+            filter: brightness(70%); /* Dim the completed items */
+        }
+        body.dark-mode .completed { 
+            background-color: var(--completed-bg-dark); 
+            filter: brightness(70%); /* Dim the completed items */
+        }
         .schedule-item.completed > *:not(.drag-handle) { filter: blur(0.5px); opacity: 0.7; }
         .schedule-item.completed .subject-details { text-decoration: line-through; }
         
@@ -406,37 +413,44 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     addBreakBtn.addEventListener('click', () => {
-        let lastCompletedIndex = -1;
+        if (schedule.length === 0) {
+            alert("Add some subjects to your schedule first!");
+            return;
+        }
+
+        let insertionIndex = -1;
+        // Find the index of the last completed subject
         for (let i = schedule.length - 1; i >= 0; i--) {
             if (schedule[i].type === 'subject' && schedule[i].completed) {
-                lastCompletedIndex = i;
+                insertionIndex = i;
                 break;
             }
         }
 
-        let insertionIndex = -1;
-        if (lastCompletedIndex !== -1) {
-            insertionIndex = lastCompletedIndex;
-        } else {
-            const firstSubjectIndex = schedule.findIndex(item => item.type === 'subject');
-            if (firstSubjectIndex !== -1) {
-                insertionIndex = firstSubjectIndex;
-            }
+        // If no subjects are completed, insert after the first subject
+        if (insertionIndex === -1) {
+            insertionIndex = schedule.findIndex(item => item.type === 'subject');
         }
 
-        if (insertionIndex !== -1) {
-            if (schedule[insertionIndex + 1]?.type !== 'break') {
-                schedule.splice(insertionIndex + 1, 0, { id: Date.now() + Math.random(), type: 'break', startTime: null, durationHours: 15 / 60, completed: false, reason: '' });
-                recalculateStartTimes(insertionIndex + 1);
-                saveState();
-                renderSchedule();
-            } else {
-                alert("There is already a break after this subject.");
-            }
-        } else {
-            alert("Add some subjects to your schedule first!");
+        // If still no subject found (shouldn't happen if schedule.length > 0)
+        if (insertionIndex === -1) {
+            alert("No subjects found to add a break after.");
+            return;
         }
+
+        // Check if there's already a break immediately after the chosen insertion point
+        if (schedule[insertionIndex + 1]?.type === 'break') {
+            alert("There is already a break after this subject.");
+            return;
+        }
+
+        // Insert the new break
+        schedule.splice(insertionIndex + 1, 0, { id: Date.now() + Math.random(), type: 'break', startTime: null, durationHours: 15 / 60, completed: false, reason: '' });
+        recalculateStartTimes(insertionIndex + 1);
+        saveState();
+        renderSchedule();
     });
+
 
     scheduleList.addEventListener('click', (e) => {
         const parentItem = e.target.closest('li');
