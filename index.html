@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Study Scheduler</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📅</text></svg>">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    
+    <style>
+        :root {
+            --primary-bg-light: #f4f7f9; --secondary-bg-light: #ffffff;
+            --primary-text-light: #1d1d1f; --secondary-text-light: #6e6e73;
+            --accent-color: #007aff; --border-color-light: #d2d2d7;
+            --success-color: #34c759; --danger-color: #ff3b30;
+            --shadow: 0 4px 12px rgba(0, 0, 0, 0.08); 
+            --break-bg-light: #fff3e0; /* Light Orange */
+            --completed-bg-light: #e8f5e9; /* Light Green */
+
+            --primary-bg-dark: #1c1c1e; --secondary-bg-dark: #2c2c2e;
+            --primary-text-dark: #f5f5f7; --secondary-text-dark: #8e8e93;
+            --border-color-dark: #444446; 
+            --break-bg-dark: #3a2e1c; /* Dark Orange */
+            --completed-bg-dark: #2c3b2d; /* Dark Green */
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html { -webkit-text-size-adjust: 100%; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--primary-bg-light); color: var(--primary-text-light);
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+        body.dark-mode { background-color: var(--primary-bg-dark); color: var(--primary-text-dark); }
+
+        .app-container { max-width: 900px; margin: 2rem auto; padding: 1rem; }
+        nav { display: flex; justify-content: space-between; align-items: center; padding: 1rem 0; border-bottom: 1px solid var(--border-color-light); }
+        body.dark-mode nav { border-bottom-color: var(--border-color-dark); }
+        nav h1 { font-size: 1.8rem; font-weight: 600; }
+        .nav-controls { display: flex; gap: 1rem; }
+
+        button, input { -webkit-tap-highlight-color: transparent; font-family: inherit; }
+
+        button { padding: 0.6rem 1.2rem; border: none; border-radius: 8px; font-size: 1rem; font-weight: 500; cursor: pointer; transition: background-color 0.2s ease, transform 0.1s ease; background-color: var(--secondary-bg-light); color: var(--accent-color); border: 1px solid var(--accent-color); }
+        button.primary-action { background-color: var(--accent-color); color: white; border: none; }
+        body.dark-mode button { background-color: var(--secondary-bg-dark); color: var(--accent-color); }
+        body.dark-mode button.primary-action { background-color: var(--accent-color); color: white; }
+        button:hover { background-color: #e9e9eb; }
+        button.primary-action:hover { background-color: #006ae1; }
+        body.dark-mode button:hover { background-color: #3a3a3c; }
+        button:active { transform: scale(0.97); }
+        #theme-switcher-btn { width: 44px; text-align: center; padding: 0.6rem; }
+
+        main { padding-top: 2rem; }
+        .hidden { display: none !important; }
+
+        .setup-view { background-color: var(--secondary-bg-light); padding: 2rem; border-radius: 12px; box-shadow: var(--shadow); }
+        body.dark-mode .setup-view { background-color: var(--secondary-bg-dark); }
+        .setup-view h2 { margin-bottom: 1.5rem; text-align: center; font-weight: 500; color: var(--secondary-text-light); }
+        body.dark-mode .setup-view h2 { color: var(--secondary-text-dark); }
+        .setup-section { margin-bottom: 2.5rem; }
+
+        .option-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 1rem; }
+        .option-item { background-color: var(--secondary-bg-light); border: 1px solid var(--border-color-light); border-radius: 10px; padding: 1rem; text-align: center; font-size: 1.2rem; font-weight: 500; cursor: pointer; transition: all 0.2s ease; box-shadow: var(--shadow); }
+        body.dark-mode .option-item { background-color: var(--secondary-bg-dark); border-color: var(--border-color-dark); }
+        .option-item.selected, body.dark-mode .option-item.selected { background-color: var(--accent-color); color: white; border-color: var(--accent-color); transform: scale(1.05); }
+
+        .manual-choice-container { text-align: center; margin-top: 1rem; }
+        #start-studying-btn { width: 100%; padding: 1rem; font-size: 1.2rem; margin-top: 1.5rem;}
+        
+        .schedule-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem; }
+        #schedule-view h2 { margin-bottom: 0; color: var(--secondary-text-light); font-weight: 500; }
+        body.dark-mode #schedule-view h2 { color: var(--secondary-text-dark); }
+
+        #schedule-list { list-style: none; }
+        .schedule-item, .break-item { display: flex; align-items: center; background-color: var(--secondary-bg-light); padding: 1.2rem; border-radius: 12px; margin-bottom: 1rem; box-shadow: var(--shadow); transition: all 0.3s ease; }
+        body.dark-mode .schedule-item, body.dark-mode .break-item { background-color: var(--secondary-bg-dark); }
+        
+        .completed { background-color: var(--completed-bg-light); }
+        body.dark-mode .completed { background-color: var(--completed-bg-dark); }
+        .schedule-item.completed > *:not(.drag-handle) { filter: blur(0.5px); opacity: 0.7; }
+        .schedule-item.completed .subject-details { text-decoration: line-through; }
+        
+        .break-item { background-color: var(--break-bg-light); }
+        body.dark-mode .break-item { background-color: var(--break-bg-dark); }
+        .break-item.completed > *:not(.delete-break-btn) { text-decoration: line-through; opacity: 0.7; }
+        .break-details { flex-grow: 1; display: flex; align-items: center; gap: 0.75rem; color: var(--secondary-text-light); font-weight: 500; justify-content: center; }
+        body.dark-mode .break-details { color: var(--secondary-text-dark); }
+        .break-reason { color: var(--secondary-text-light); font-style: italic; }
+        .delete-break-btn { background: none; border: none; font-size: 1.5rem; color: var(--secondary-text-light); cursor: pointer; border-radius: 50%; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; transition: all 0.2s ease;}
+        .delete-break-btn:hover { background-color: rgba(255, 0, 0, 0.1); color: var(--danger-color); }
+        
+        .checkbox-container { width: 24px; height: 24px; border-radius: 50%; border: 2px solid var(--border-color-light); display: flex; justify-content: center; align-items: center; cursor: pointer; margin-right: 1rem; flex-shrink: 0; transition: all 0.2s ease; }
+        body.dark-mode .checkbox-container { border-color: var(--border-color-dark); }
+        .completed .checkbox-container { background-color: var(--success-color); border-color: var(--success-color); }
+        .checkbox-container .fa-check { color: white; font-size: 0.8rem; opacity: 0; transition: opacity 0.2s ease; }
+        .completed .checkbox-container .fa-check { opacity: 1; }
+        
+        .subject-details { flex-grow: 1; }
+        .time-header { display: flex; align-items: center; gap: 0.5rem; }
+        .time-display { font-size: 1.5rem; font-weight: 600; }
+        .subject-name { font-size: 1.1rem; color: var(--secondary-text-light); margin-top: 0.25rem; }
+        body.dark-mode .subject-name { color: var(--secondary-text-dark); }
+        .edit-btn { background: none; border: none; cursor: pointer; color: var(--secondary-text-light); opacity: 0.5; padding: 0.5rem; border-radius: 50%; }
+        .edit-btn:hover { background-color: rgba(0,0,0,0.05); opacity: 1; }
+        body.dark-mode .edit-btn:hover { background-color: rgba(255,255,255,0.1); }
+
+        .duration-control { display: flex; align-items: center; gap: 0.5rem; margin-left: 1rem; }
+        .duration-control input { width: 70px; text-align: center; font-size: 1rem; font-weight: 500; border: 1px solid var(--border-color-light); border-radius: 6px; padding: 0.3rem; background-color: var(--primary-bg-light); color: var(--primary-text-light); }
+        body.dark-mode .duration-control input { background-color: var(--secondary-bg-dark); border-color: var(--border-color-dark); color: var(--primary-text-dark); }
+        .duration-control label { font-size: 0.9rem; font-weight: 500; color: var(--secondary-text-light); }
+
+        .add-break-btn { margin: -0.5rem 0 0.5rem; text-align: center; }
+        .add-break-btn button { background: none; border: none; color: var(--accent-color); font-weight: 500; cursor: pointer; padding: 0.5rem; font-size: 0.9rem; }
+        
+        .drag-handle { cursor: grab; padding-right: 1rem; color: var(--secondary-text-light); opacity: 0.5; }
+        .schedule-item.dragging { opacity: 0.5; background: var(--secondary-bg-dark); }
+        .drag-over { border-top: 2px solid var(--accent-color); }
+
+        .modal-overlay { position: fixed; inset: 0; background-color: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; z-index: 1000; }
+        .modal-content { background-color: var(--secondary-bg-light); body.dark-mode & { background-color: var(--secondary-bg-dark); } padding: 2rem; border-radius: 12px; box-shadow: var(--shadow); max-width: 500px; width: 90%; max-height: 80vh; display: flex; flex-direction: column; }
+        .modal-header { margin-bottom: 1.5rem; }
+        .modal-body { overflow-y: auto; margin-bottom: 1.5rem; }
+        .subject-checklist { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; }
+        .subject-checklist label { display: flex; align-items: center; gap: 0.75rem; font-size: 1rem; cursor: pointer; }
+        .subject-checklist input { width: 1.2rem; height: 1.2rem; }
+        .modal-footer { display: flex; justify-content: flex-end; gap: 1rem; }
+
+        @media (max-width: 768px) {
+            body { font-size: 15px; }
+            .app-container { margin: 0.5rem auto; padding: 0.5rem; }
+            nav h1 { font-size: 1.5rem; }
+            .schedule-item, .setup-view, .modal-content { padding: 1rem; }
+            .time-display { font-size: 1.3rem; }
+            .subject-name { font-size: 1rem; }
+            .schedule-item { flex-wrap: wrap; }
+            .subject-details { flex-grow: 1; width: calc(100% - 24px - 1rem - 24px); }
+            .duration-control { width: 100%; margin-left: calc(24px + 1rem + 24px); margin-top: 0.5rem; justify-content: flex-start;}
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <nav>
+            <h1>Study Scheduler</h1>
+            <div class="nav-controls">
+                <button id="reset-btn">Reset</button>
+                <button id="theme-switcher-btn"><i class="fas fa-moon"></i></button>
+            </div>
+        </nav>
+        <main>
+            <div id="setup-view" class="setup-view">
+                <div class="setup-section">
+                    <h2>1. When do you want to start?</h2>
+                    <div id="start-time-selection" class="option-grid"></div>
+                </div>
+                 <div class="setup-section">
+                    <h2>2. What's the default duration?</h2>
+                    <div id="default-duration-selection" class="option-grid"></div>
+                </div>
+                <div class="setup-section">
+                    <h2>3. How many subjects?</h2>
+                    <div id="subject-count-selection" class="option-grid"></div>
+                    <div class="manual-choice-container">
+                        <p style="margin-bottom: 0.5rem; color: var(--secondary-text-light);">or</p>
+                        <button id="manual-select-btn">Choose Manually</button>
+                    </div>
+                </div>
+                <button id="start-studying-btn" class="primary-action" disabled>Create My Schedule</button>
+            </div>
+
+            <div id="schedule-view" class="hidden">
+                <div class="schedule-header">
+                    <h2>Today's Schedule</h2>
+                    <button id="edit-subjects-btn" style="padding: 0.4rem 0.8rem; font-size: 0.9rem;">Edit Subjects</button>
+                </div>
+                <ul id="schedule-list"></ul>
+            </div>
+        </main>
+        
+        <div id="manual-select-modal" class="modal-overlay hidden">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3 style="font-size: 1.5rem; font-weight: 600;">Select Your Subjects</h3>
+                </div>
+                <div id="subject-checklist-container" class="modal-body"></div>
+                <div class="modal-footer">
+                    <button id="cancel-manual-select">Cancel</button>
+                    <button id="confirm-manual-select" class="primary-action">Confirm</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    // --- DOM ELEMENTS ---
+    const setupView = document.getElementById('setup-view');
+    const scheduleView = document.getElementById('schedule-view');
+    const scheduleList = document.getElementById('schedule-list');
+    const themeSwitcherBtn = document.getElementById('theme-switcher-btn');
+    const resetBtn = document.getElementById('reset-btn');
+    const startTimeSelection = document.getElementById('start-time-selection');
+    const defaultDurationSelection = document.getElementById('default-duration-selection');
+    const subjectCountSelection = document.getElementById('subject-count-selection');
+    const startStudyingBtn = document.getElementById('start-studying-btn');
+    const manualSelectBtn = document.getElementById('manual-select-btn');
+    const manualSelectModal = document.getElementById('manual-select-modal');
+    const cancelManualSelectBtn = document.getElementById('cancel-manual-select');
+    const confirmManualSelectBtn = document.getElementById('confirm-manual-select');
+    const subjectChecklistContainer = document.getElementById('subject-checklist-container');
+    const editSubjectsBtn = document.getElementById('edit-subjects-btn');
+    const body = document.body;
+
+    // --- STATE MANAGEMENT ---
+    let schedule = [];
+    let settings = { startTime: null, subjectCount: null, defaultDuration: 1, theme: 'light' };
+    let isEditingSubjects = false;
+    let draggedItemId = null;
+    let isDragHandlePressed = false;
+    const MASTER_SUBJECTS = ['DM', 'MATHS', 'APTITUDE', 'DL', 'TOC', 'COA', 'OS', 'DBMS', 'CN', 'CD', 'C', 'DAA', 'DSA'];
+
+    // --- DATA PERSISTENCE ---
+    const saveState = () => {
+        localStorage.setItem('studySchedule', JSON.stringify(schedule));
+        localStorage.setItem('studySettings', JSON.stringify(settings));
+    };
+    const loadState = () => {
+        const savedSchedule = localStorage.getItem('studySchedule');
+        const savedSettings = localStorage.getItem('studySettings');
+        if (savedSchedule && savedSchedule !== '[]') schedule = JSON.parse(savedSchedule, (key, value) => key === 'startTime' ? new Date(value) : value);
+        if (savedSettings) settings = JSON.parse(savedSettings);
+    };
+
+    // --- CORE LOGIC ---
+    const calculateEndTime = (startTime, durationHours) => new Date(startTime.getTime() + durationHours * 60 * 60 * 1000);
+    const formatTime = (date) => date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+    const formatTimeTo24hr = (date) => `${String(date.getHours()).padStart(2,'0')}:${String(date.getMinutes()).padStart(2,'0')}`;
+
+    const recalculateStartTimes = (startIndex = 0) => {
+        if (schedule.length === 0) return;
+        for (let i = startIndex; i < schedule.length; i++) {
+            if (i === 0) {
+                const [hour, minute] = settings.startTime.split(':');
+                const newStartTime = new Date();
+                newStartTime.setHours(parseInt(hour), parseInt(minute), 0, 0);
+                schedule[i].startTime = newStartTime;
+            } else {
+                const prevItem = schedule[i - 1];
+                schedule[i].startTime = calculateEndTime(prevItem.startTime, prevItem.durationHours);
+            }
+        }
+    };
+
+    const createSchedule = (subjects) => {
+        if (!settings.startTime || !settings.defaultDuration || subjects.length === 0) {
+            alert("Please ensure start time, duration, and subjects are selected."); return;
+        }
+        schedule = subjects.map(name => ({
+            id: Date.now() + Math.random(), type: 'subject', name: name,
+            startTime: null, durationHours: settings.defaultDuration, completed: false
+        }));
+        recalculateStartTimes();
+        saveState();
+        renderSchedule();
+        switchView('schedule');
+    };
+
+    const cleanupBreaks = () => {
+        let scheduleModified = false;
+        for (let i = schedule.length - 3; i >= 0; i--) {
+            const currentItem = schedule[i];
+            const nextItem = schedule[i + 1];
+            const itemAfterNext = schedule[i + 2];
+
+            if (currentItem.type === 'subject' && currentItem.completed &&
+                nextItem.type === 'break' && !nextItem.completed &&
+                itemAfterNext.type === 'subject' && itemAfterNext.completed) {
+                schedule.splice(i + 1, 1);
+                scheduleModified = true;
+            }
+        }
+        return scheduleModified;
+    };
+    
+    // --- RENDERING & UI ---
+    const renderSchedule = () => {
+        scheduleList.innerHTML = '';
+        schedule.forEach((item, index) => {
+            scheduleList.appendChild(createScheduleItemHTML(item));
+            if (item.type === 'subject' && index < schedule.length - 1) {
+                const nextItem = schedule[index + 1];
+                if (nextItem.type === 'subject' && !(item.completed && nextItem.completed)) {
+                    const breakButtonLi = document.createElement('li');
+                    breakButtonLi.className = 'add-break-btn';
+                    breakButtonLi.innerHTML = `<button data-index="${index}">+ Add Break</button>`;
+                    scheduleList.appendChild(breakButtonLi);
+                }
+            }
+        });
+    };
+
+    const createScheduleItemHTML = (item) => {
+        const li = document.createElement('li');
+        li.dataset.id = item.id;
+        li.className = item.completed ? 'completed' : '';
+
+        if (item.type === 'subject') {
+            li.classList.add('schedule-item');
+            li.draggable = true;
+            li.innerHTML = `
+                <span class="drag-handle"><i class="fas fa-grip-vertical"></i></span>
+                <div class="checkbox-container">
+                    <i class="fas fa-check"></i>
+                </div>
+                <div class="subject-details">
+                    <div class="time-header">
+                        <span class="time-display">${formatTime(item.startTime)}</span>
+                        <button class="edit-btn" data-action="edit-time" title="Edit time"><i class="fas fa-pencil-alt"></i></button>
+                    </div>
+                    <span class="subject-name">${item.name}</span>
+                </div>
+                <div class="duration-control">
+                    <input type="number" value="${item.durationHours}" min="0.25" step="0.25" class="duration-input">
+                    <label>hrs</label>
+                </div>`;
+        } else if (item.type === 'break') {
+            li.classList.add('break-item');
+            const reasonText = item.reason ? `<span class="break-reason">(${item.reason})</span>` : '<span class="break-reason"></span>';
+            li.innerHTML = `
+                <div class="checkbox-container">
+                    <i class="fas fa-check"></i>
+                </div>
+                <div class="break-details">
+                    <i class="fas fa-coffee"></i>
+                    <div class="duration-control">
+                        <input type="number" value="${item.durationHours * 60}" min="5" step="5" class="duration-input-min">
+                        <label>min Break</label>
+                    </div>
+                    ${reasonText}
+                    <button class="edit-btn" data-action="edit-reason" title="Edit reason"><i class="fas fa-pencil-alt"></i></button>
+                </div>
+                <button class="delete-break-btn" title="Delete break">&times;</button>`;
+        }
+        return li;
+    };
+    
+    const populateSetupView = () => {
+        const createOptionItems = (container, options, dataAttr) => {
+            container.innerHTML = '';
+            options.forEach(opt => {
+                const item = document.createElement('div');
+                item.className = 'option-item';
+                item.textContent = opt.label;
+                item.dataset[dataAttr] = opt.value;
+                container.appendChild(item);
+            });
+        };
+        const timeOptions = [];
+        for (let i = 6; i <= 16; i++) {
+             timeOptions.push({ label: `${i <= 12 ? i : i-12}:00 ${i < 12 ? 'AM' : 'PM'}`, value: `${i}:00` });
+        }
+        createOptionItems(startTimeSelection, timeOptions, 'time');
+        createOptionItems(defaultDurationSelection, [0.5, 1, 1.5, 2, 2.5, 3].map(h => ({label: `${h} hr`, value: h})), 'duration');
+        createOptionItems(subjectCountSelection, Array.from({length: MASTER_SUBJECTS.length}, (_, i) => ({label: i + 1, value: i + 1})), 'count');
+    };
+    
+    const switchView = (viewName) => {
+        setupView.classList.toggle('hidden', viewName !== 'setup');
+        scheduleView.classList.toggle('hidden', viewName === 'setup');
+    };
+    const checkCanStart = () => startStudyingBtn.disabled = !(settings.startTime && settings.subjectCount && settings.defaultDuration);
+    
+    const openModal = () => {
+        let checklistHTML = '<div class="subject-checklist">';
+        const currentSubjects = isEditingSubjects ? schedule.filter(item => item.type === 'subject').map(item => item.name) : [];
+        checklistHTML += MASTER_SUBJECTS.map(s => `<label><input type="checkbox" value="${s}" ${isEditingSubjects && currentSubjects.includes(s) ? 'checked' : ''}>${s}</label>`).join('');
+        checklistHTML += '</div>';
+        subjectChecklistContainer.innerHTML = checklistHTML;
+        manualSelectModal.classList.remove('hidden');
+    };
+    const closeModal = () => manualSelectModal.classList.add('hidden');
+
+    const handleOptionSelection = (container, settingKey, value, isNumeric = false) => {
+        settings[settingKey] = isNumeric ? parseFloat(value) : value;
+        container.querySelectorAll('.option-item').forEach(el => el.classList.remove('selected'));
+        const target = Array.from(container.children).find(child => child.dataset[Object.keys(child.dataset)[0]] == value);
+        if(target) target.classList.add('selected');
+        if (settingKey === 'subjectCount') settings.manualSubjects = null;
+        checkCanStart();
+    };
+
+    startTimeSelection.addEventListener('click', (e) => e.target.closest('.option-item') && handleOptionSelection(startTimeSelection, 'startTime', e.target.dataset.time));
+    defaultDurationSelection.addEventListener('click', (e) => e.target.closest('.option-item') && handleOptionSelection(defaultDurationSelection, 'defaultDuration', e.target.dataset.duration, true));
+    subjectCountSelection.addEventListener('click', (e) => e.target.closest('.option-item') && handleOptionSelection(subjectCountSelection, 'subjectCount', e.target.dataset.count, true));
+    
+    startStudyingBtn.addEventListener('click', () => {
+        if (startStudyingBtn.disabled) return;
+        const shuffled = [...MASTER_SUBJECTS].sort(() => 0.5 - Math.random());
+        createSchedule(shuffled.slice(0, settings.subjectCount));
+    });
+
+    manualSelectBtn.addEventListener('click', () => { isEditingSubjects = false; openModal(); });
+    editSubjectsBtn.addEventListener('click', () => { isEditingSubjects = true; openModal(); });
+    cancelManualSelectBtn.addEventListener('click', closeModal);
+    
+    confirmManualSelectBtn.addEventListener('click', () => {
+        const selectedSubjects = Array.from(subjectChecklistContainer.querySelectorAll('input:checked')).map(cb => cb.value);
+        if (selectedSubjects.length === 0) { alert('Please select at least one subject.'); return; }
+        
+        if (isEditingSubjects) {
+            const currentSubjectNames = schedule.filter(item => item.type === 'subject').map(item => item.name);
+            let updatedSchedule = schedule.filter(item => item.type === 'break' || (item.type === 'subject' && selectedSubjects.includes(item.name)));
+            const newSubjectNames = selectedSubjects.filter(name => !currentSubjectNames.includes(name));
+            const newSubjectObjects = newSubjectNames.map(name => ({
+                id: Date.now() + Math.random(), type: 'subject', name: name,
+                startTime: null, durationHours: settings.defaultDuration, completed: false
+            }));
+            schedule = [...updatedSchedule, ...newSubjectObjects];
+            recalculateStartTimes(0);
+        } else {
+            settings.subjectCount = selectedSubjects.length;
+            handleOptionSelection(subjectCountSelection, 'subjectCount', selectedSubjects.length, true);
+            createSchedule(selectedSubjects);
+        }
+        
+        if(isEditingSubjects) { saveState(); renderSchedule(); }
+        closeModal();
+    });
+
+    scheduleList.addEventListener('click', (e) => {
+        const parentItem = e.target.closest('li');
+        if (!parentItem) return;
+
+        const target = e.target;
+        const item = schedule.find(d => d.id == parentItem.dataset.id);
+
+        if (target.closest('.add-break-btn button')) {
+            const index = parseInt(target.closest('button').dataset.index);
+            schedule.splice(index + 1, 0, { id: Date.now() + Math.random(), type: 'break', startTime: null, durationHours: 15 / 60, completed: false, reason: '' });
+            recalculateStartTimes(index + 1);
+            saveState();
+            renderSchedule();
+        } else if (target.closest('[data-action="edit-time"]')) {
+            const timeHeader = target.closest('.time-header');
+            const timeDisplay = timeHeader.querySelector('.time-display');
+            const input = document.createElement('input');
+            input.type = 'time'; input.value = formatTimeTo24hr(item.startTime);
+            timeDisplay.style.display = 'none';
+            timeHeader.prepend(input);
+            input.focus();
+            
+            const saveTime = () => {
+                const [newHour, newMinute] = input.value.split(':');
+                item.startTime.setHours(parseInt(newHour), parseInt(newMinute));
+                recalculateStartTimes(schedule.indexOf(item) + 1);
+                saveState();
+                renderSchedule();
+            };
+            input.addEventListener('blur', saveTime);
+            input.addEventListener('keydown', (ev) => { if (ev.key === 'Enter') input.blur(); });
+        } else if (target.closest('[data-action="edit-reason"]')) {
+            const reasonSpan = parentItem.querySelector('.break-reason');
+            const input = document.createElement('input');
+            input.type = 'text'; input.value = item.reason;
+            input.style.width = '80px';
+            reasonSpan.replaceWith(input);
+            input.focus();
+
+            const saveReason = () => {
+                item.reason = input.value.trim();
+                saveState();
+                renderSchedule();
+            };
+            input.addEventListener('blur', saveReason);
+            input.addEventListener('keydown', (ev) => { if (ev.key === 'Enter') input.blur(); });
+
+        } else if (target.closest('.checkbox-container')) {
+            if (item) {
+                item.completed = !item.completed;
+                if (item.type === 'subject' && cleanupBreaks()) {
+                    recalculateStartTimes(0);
+                }
+                saveState();
+                renderSchedule();
+            }
+        } else if (target.closest('.delete-break-btn')) {
+            const deletedIndex = schedule.findIndex(i => i.id == item.id);
+            schedule = schedule.filter(i => i.id != item.id);
+            recalculateStartTimes(deletedIndex);
+            saveState();
+            renderSchedule();
+        }
+    });
+
+    scheduleList.addEventListener('change', (e) => {
+        const parentItem = e.target.closest('li');
+        if (!parentItem) return;
+        const itemIndex = schedule.findIndex(d => d.id == parentItem.dataset.id);
+        if (itemIndex === -1) return;
+        
+        let newDuration;
+        if (e.target.classList.contains('duration-input')) newDuration = parseFloat(e.target.value);
+        else if (e.target.classList.contains('duration-input-min')) newDuration = parseFloat(e.target.value) / 60;
+        
+        if (newDuration && !isNaN(newDuration) && newDuration > 0) {
+            schedule[itemIndex].durationHours = newDuration;
+            recalculateStartTimes(itemIndex + 1);
+            saveState();
+            renderSchedule();
+        }
+    });
+    
+    // Drag and Drop Handlers
+    scheduleList.addEventListener('mousedown', (e) => {
+        if (e.target.closest('.drag-handle')) { isDragHandlePressed = true; }
+    });
+    scheduleList.addEventListener('mouseup', () => { isDragHandlePressed = false; });
+    scheduleList.addEventListener('mouseleave', () => { isDragHandlePressed = false; });
+
+    scheduleList.addEventListener('dragstart', (e) => {
+        const target = e.target.closest('.schedule-item');
+        if(target && isDragHandlePressed) {
+            draggedItemId = target.dataset.id;
+            setTimeout(() => target.classList.add('dragging'), 0);
+        } else {
+            e.preventDefault();
+        }
+    });
+    scheduleList.addEventListener('dragend', () => {
+        isDragHandlePressed = false;
+        const target = document.querySelector('.dragging');
+        if(target) target.classList.remove('dragging');
+        draggedItemId = null;
+    });
+    scheduleList.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        const target = e.target.closest('.schedule-item');
+        if (target && target.dataset.id !== draggedItemId) {
+            document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
+            target.classList.add('drag-over');
+        }
+    });
+    scheduleList.addEventListener('dragleave', (e) => e.target.closest('.schedule-item')?.classList.remove('drag-over'));
+    scheduleList.addEventListener('drop', (e) => {
+        e.preventDefault();
+        document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
+        const dropTarget = e.target.closest('.schedule-item');
+        if (dropTarget && draggedItemId) {
+            const fromIndex = schedule.findIndex(item => item.id == draggedItemId);
+            const toIndex = schedule.findIndex(item => item.id == dropTarget.dataset.id);
+
+            if (fromIndex !== -1 && toIndex !== -1) {
+                const [draggedItem] = schedule.splice(fromIndex, 1);
+                schedule.splice(toIndex, 0, draggedItem);
+                
+                recalculateStartTimes(Math.min(fromIndex, toIndex));
+                saveState();
+                renderSchedule();
+            }
+        }
+    });
+
+    themeSwitcherBtn.addEventListener('click', () => {
+        body.classList.toggle('dark-mode');
+        settings.theme = body.classList.contains('dark-mode') ? 'dark' : 'light';
+        themeSwitcherBtn.innerHTML = settings.theme === 'dark' ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
+        saveState();
+    });
+
+    resetBtn.addEventListener('click', () => {
+        if (confirm("Are you sure you want to reset your schedule?")) {
+            schedule = [];
+            settings = { startTime: null, subjectCount: null, defaultDuration: 1, theme: settings.theme };
+            localStorage.clear();
+            populateSetupView(); checkCanStart(); switchView('setup');
+        }
+    });
+    
+    const init = () => {
+        loadState();
+        if (settings.theme === 'dark') { body.classList.add('dark-mode'); themeSwitcherBtn.innerHTML = '<i class="fas fa-sun"></i>'; }
+        if (schedule.length > 0) { renderSchedule(); switchView('schedule'); } 
+        else { populateSetupView(); switchView('setup'); }
+    };
+    init();
+});
+</script>
+</body>
+</html>
